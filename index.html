@@ -1,106 +1,1068 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>AI人工智慧辨識人臉</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.css" rel="stylesheet">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI 人臉辨識系統｜龍蝦王</title>
+  <meta name="description" content="Cyberpunk 2077 風格 AI 人臉辨識系統，支援 face-api.js 即時人臉偵測、年齡、性別與表情辨識。">
+  <meta name="keywords" content="AI,人臉辨識,face-api.js,年齡辨識,性別辨識,表情辨識,龍蝦王">
+  <meta name="author" content="龍蝦王">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AI 人臉辨識系統｜龍蝦王">
+  <meta property="og:description" content="深黑霓虹 Cyberpunk 2077 風格，即時進行人臉、年齡、性別與表情辨識。">
+  <meta property="og:locale" content="zh_TW">
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    /* justify-content：x軸   align-items：y軸    flex-direction：排列方式*/
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100vw;       
-      height: 100vh;      
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      font-family: "微軟正黑體", "黑體-繁", sans-serif;
-      font-size: 40px;
-      /* background :darkgrey;*/
-      background:linear-gradient(to left, darkgrey, grey);
-      /*overflow: hidden;       不能捲動視窗*/
+    :root {
+      --bg: #0a0a0f;
+      --bg-soft: rgba(18, 20, 31, 0.92);
+      --panel: rgba(10, 14, 24, 0.78);
+      --panel-strong: rgba(14, 19, 31, 0.95);
+      --cyan: #00f0ff;
+      --cyan-soft: rgba(0, 240, 255, 0.18);
+      --yellow: #fcee09;
+      --yellow-soft: rgba(252, 238, 9, 0.14);
+      --text: #f5fbff;
+      --muted: #8ca3b3;
+      --danger: #ff4d6d;
+      --radius: 22px;
+      --shadow-cyan: 0 0 10px rgba(0, 240, 255, 0.55), 0 0 26px rgba(0, 240, 255, 0.2);
+      --shadow-yellow: 0 0 10px rgba(252, 238, 9, 0.45), 0 0 20px rgba(252, 238, 9, 0.15);
+      --border: 1px solid rgba(0, 240, 255, 0.28);
     }
 
-    #te{
-      font-family: "微軟正黑體";
-      font-weight:bold;
-      font-size: 8vmin;
-      color: rgb(255, 255, 255);
-      text-shadow: -1px -1px 0 rgb(0, 0, 0);
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
       margin: 0;
-      padding: 20px;
+      min-height: 100%;
+      background: radial-gradient(circle at top, rgba(0, 240, 255, 0.08), transparent 30%),
+        radial-gradient(circle at 80% 20%, rgba(252, 238, 9, 0.06), transparent 24%),
+        linear-gradient(135deg, #05060b 0%, var(--bg) 45%, #070910 100%);
+      color: var(--text);
+      font-family: "Noto Sans TC", sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.035) 0px,
+        rgba(255, 255, 255, 0.035) 1px,
+        transparent 2px,
+        transparent 5px
+      );
+      opacity: 0.16;
+      mix-blend-mode: screen;
+      animation: scanlineMove 10s linear infinite;
+      z-index: 30;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(0,240,255,0.025), transparent 25%, rgba(252,238,9,0.02) 60%, transparent 100%);
+      z-index: 1;
+    }
+
+    @keyframes scanlineMove {
+      from { transform: translateY(0); }
+      to { transform: translateY(12px); }
+    }
+
+    .app {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 28px clamp(16px, 2.8vw, 36px) 18px;
+    }
+
+    .hud {
+      width: min(1380px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(300px, 1.45fr) minmax(280px, 0.85fr);
+      gap: 22px;
+      align-items: start;
+      flex: 1;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(17, 23, 37, 0.9), rgba(8, 10, 18, 0.88));
+      border: var(--border);
+      border-radius: var(--radius);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 20px 60px rgba(0, 0, 0, 0.45), var(--shadow-cyan);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(130deg, rgba(0,240,255,0.06), transparent 35%, rgba(252,238,9,0.04) 70%, transparent 100%);
+    }
+
+    .left-panel {
+      padding: clamp(18px, 2vw, 28px);
+    }
+
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: clamp(18px, 2vw, 24px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--yellow);
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      font-family: "Orbitron", sans-serif;
+      font-size: 0.78rem;
+      margin-bottom: 14px;
+    }
+
+    .eyebrow::before,
+    .eyebrow::after {
+      content: "";
+      width: 30px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--yellow));
+      box-shadow: var(--shadow-yellow);
+    }
+
+    .title-wrap {
+      margin-bottom: 20px;
+    }
+
+    .title {
+      position: relative;
+      display: inline-block;
+      margin: 0;
+      font-family: "Orbitron", sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 4vw, 3.7rem);
+      letter-spacing: 0.08em;
+      color: var(--text);
+      text-shadow: 0 0 14px rgba(0, 240, 255, 0.28), 0 0 32px rgba(0, 240, 255, 0.12);
+      text-transform: uppercase;
+    }
+
+    .title::before,
+    .title::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      clip-path: inset(0 0 0 0);
+    }
+
+    .title::before {
+      color: var(--cyan);
+      transform: translate(-2px, 0);
+      opacity: 0.65;
+      animation: glitchA 2.6s infinite linear alternate-reverse;
+    }
+
+    .title::after {
+      color: var(--yellow);
+      transform: translate(2px, 0);
+      opacity: 0.45;
+      animation: glitchB 2.2s infinite linear alternate-reverse;
+    }
+
+    @keyframes glitchA {
+      0% { clip-path: inset(8% 0 72% 0); }
+      20% { clip-path: inset(64% 0 5% 0); }
+      40% { clip-path: inset(20% 0 36% 0); }
+      60% { clip-path: inset(78% 0 2% 0); }
+      80% { clip-path: inset(42% 0 28% 0); }
+      100% { clip-path: inset(12% 0 63% 0); }
+    }
+
+    @keyframes glitchB {
+      0% { clip-path: inset(58% 0 16% 0); }
+      20% { clip-path: inset(3% 0 74% 0); }
+      40% { clip-path: inset(32% 0 28% 0); }
+      60% { clip-path: inset(12% 0 68% 0); }
+      80% { clip-path: inset(76% 0 6% 0); }
+      100% { clip-path: inset(26% 0 40% 0); }
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+      max-width: 60ch;
+    }
+
+    .video-shell {
+      position: relative;
+      margin-top: 24px;
+      border-radius: 26px;
+      padding: 14px;
+      background:
+        linear-gradient(135deg, rgba(0,240,255,0.12), rgba(252,238,9,0.08)),
+        rgba(4, 6, 12, 0.86);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 0 24px rgba(0,240,255,0.16), 0 0 80px rgba(0,0,0,0.5);
+      transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+    }
+
+    .video-shell.detecting {
+      border-color: rgba(252, 238, 9, 0.7);
+      box-shadow: 0 0 22px rgba(252, 238, 9, 0.2), 0 0 40px rgba(0,240,255,0.3), inset 0 0 18px rgba(0,240,255,0.08);
+      transform: translateY(-1px);
+    }
+
+    .video-stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 18px;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(0,240,255,0.08), transparent),
+        radial-gradient(circle at center, rgba(0,240,255,0.06), rgba(0,0,0,0.92));
+      border: 1px solid rgba(0, 240, 255, 0.18);
+    }
+
+    #inputVideo,
+    #overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     #inputVideo {
-      max-height: 80%;  
-      max-width: 80%;
+      transform: scaleX(-1);
+      background: #03040a;
     }
-    
-    canvas {
+
+    #overlay {
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .video-grid,
+    .target-corners,
+    .video-overlay {
       position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
     }
 
-    #inputtext{
-      font-size: 4vmin;
-      height: 5vh;
-      max-width: 90vw;
-      margin-top: 2vh;
-      margin-bottom: 15vh;
+    .video-grid {
+      background-image:
+        linear-gradient(rgba(0,240,255,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,240,255,0.08) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0.25));
     }
 
-    #inputtextUser{
-      font-size: 4vmin;
-      height: 5vh;
-      max-width: 90vw;
-      margin-top: 2vh;
+    .video-overlay {
+      background:
+        radial-gradient(circle at center, transparent 40%, rgba(10,10,15,0.45) 100%),
+        linear-gradient(180deg, rgba(0,0,0,0.1), transparent 20%, transparent 80%, rgba(0,0,0,0.25));
     }
 
-    #mask{
-      width: 100vw;
-      height: 100vh;
-      background-color: #000;
-      background: rgba(0, 0, 0, 0.9);
-      position:absolute;
-      display:none;
+    .corner {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border: 3px solid var(--cyan);
+      filter: drop-shadow(0 0 8px rgba(0,240,255,0.45));
     }
 
-    #loadImg{
-      max-height: 50%;  
-      max-width: 50%;
-      position:absolute;
-      display:none;
+    .corner.tl { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+    .corner.tr { top: 14px; right: 14px; border-left: 0; border-bottom: 0; }
+    .corner.bl { bottom: 14px; left: 14px; border-right: 0; border-top: 0; }
+    .corner.br { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+
+    .loading-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: linear-gradient(180deg, rgba(4, 8, 16, 0.94), rgba(4, 8, 16, 0.88));
+      backdrop-filter: blur(4px);
+      transition: opacity 0.35s ease, visibility 0.35s ease;
     }
 
-    .ui-textfield {
-    text-align: center;
+    .loading-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-ring {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      border: 3px solid rgba(0,240,255,0.14);
+      border-top-color: var(--cyan);
+      border-right-color: var(--yellow);
+      box-shadow: 0 0 18px rgba(0,240,255,0.15), inset 0 0 18px rgba(0,240,255,0.06);
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-family: "Orbitron", sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      text-align: center;
+    }
+
+    .loading-subtext {
+      color: var(--muted);
+      font-size: 0.94rem;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .progress-wrap {
+      width: min(320px, calc(100% - 36px));
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+      border: 1px solid rgba(0,240,255,0.2);
+      box-shadow: inset 0 0 14px rgba(0,0,0,0.38);
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--yellow));
+      box-shadow: 0 0 14px rgba(0,240,255,0.35);
+      transition: width 0.25s ease;
+    }
+
+    .progress-value {
+      color: var(--yellow);
+      font-family: "Orbitron", sans-serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+    }
+
+    .control-bar {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr auto;
+      gap: 12px;
+    }
+
+    .field,
+    .action-btn,
+    .status-chip,
+    .info-card,
+    .mini-card {
+      border-radius: 16px;
+    }
+
+    .field {
+      position: relative;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid rgba(0,240,255,0.18);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+
+    .field label {
+      display: block;
+      padding: 10px 14px 4px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: "Orbitron", sans-serif;
+    }
+
+    .field input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 1rem;
+      padding: 0 14px 13px;
+      font-family: inherit;
+    }
+
+    .field input::placeholder {
+      color: rgba(140, 163, 179, 0.72);
+    }
+
+    .action-btn {
+      border: 1px solid rgba(252,238,9,0.38);
+      background: linear-gradient(135deg, rgba(252,238,9,0.18), rgba(0,240,255,0.1));
+      color: var(--text);
+      font-family: "Orbitron", sans-serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      padding: 0 18px;
+      min-height: 72px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      box-shadow: var(--shadow-yellow);
+    }
+
+    .action-btn:hover,
+    .action-btn:focus-visible {
+      transform: translateY(-1px);
+      border-color: rgba(0,240,255,0.56);
+      box-shadow: 0 0 18px rgba(252,238,9,0.18), 0 0 22px rgba(0,240,255,0.18);
+      outline: none;
+    }
+
+    .action-btn:disabled {
+      opacity: 0.65;
+      cursor: wait;
+      transform: none;
+    }
+
+    .status-row {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(0,240,255,0.16);
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 0.92rem;
+    }
+
+    .status-chip::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px rgba(0,240,255,0.8);
+    }
+
+    .status-chip.warning::before { background: var(--yellow); box-shadow: 0 0 10px rgba(252,238,9,0.8); }
+    .status-chip.danger::before { background: var(--danger); box-shadow: 0 0 10px rgba(255,77,109,0.8); }
+
+    .system-box {
+      padding: 14px 16px;
+      border: 1px solid rgba(0,240,255,0.16);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));
+      border-radius: 18px;
+    }
+
+    .system-title {
+      margin: 0 0 10px;
+      font-family: "Orbitron", sans-serif;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+      font-size: 0.95rem;
+    }
+
+    .system-log {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+      line-height: 1.7;
+      min-height: 48px;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .info-card {
+      position: relative;
+      overflow: hidden;
+      padding: 16px;
+      border: 1px solid rgba(0,240,255,0.18);
+      background: linear-gradient(180deg, rgba(9, 14, 24, 0.86), rgba(10, 12, 20, 0.74));
+      min-height: 132px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 0 22px rgba(0,240,255,0.08);
+    }
+
+    .info-card.highlight {
+      border-color: rgba(252,238,9,0.26);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 0 22px rgba(252,238,9,0.08), 0 0 26px rgba(0,240,255,0.08);
+    }
+
+    .info-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -20% -40% auto;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,240,255,0.14), transparent 60%);
+      filter: blur(4px);
+    }
+
+    .card-label {
+      font-family: "Orbitron", sans-serif;
+      font-size: 0.76rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .card-value {
+      font-family: "Orbitron", sans-serif;
+      font-size: clamp(1.6rem, 2.4vw, 2.15rem);
+      color: var(--text);
+      text-shadow: 0 0 12px rgba(0,240,255,0.22);
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .card-hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .side-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .mini-card {
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(0,240,255,0.14);
+    }
+
+    .mini-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      font-family: "Orbitron", sans-serif;
+    }
+
+    .mini-value {
+      font-size: 1rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    footer {
+      width: min(1380px, 100%);
+      margin: 18px auto 0;
+      color: rgba(245, 251, 255, 0.75);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 0 6px;
+      font-size: 0.92rem;
+    }
+
+    footer span:last-child {
+      color: var(--yellow);
+      font-family: "Orbitron", sans-serif;
+      letter-spacing: 0.06em;
+    }
+
+    @media (max-width: 1100px) {
+      .hud {
+        grid-template-columns: 1fr;
+      }
+
+      .results-grid,
+      .side-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        padding-top: 20px;
+      }
+
+      .left-panel,
+      .right-panel {
+        padding: 16px;
+      }
+
+      .control-bar,
+      .results-grid,
+      .side-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .video-stage {
+        aspect-ratio: 3 / 4;
+      }
+
+      .title {
+        letter-spacing: 0.04em;
+      }
+
+      .action-btn {
+        min-height: 58px;
+      }
+
+      footer {
+        font-size: 0.84rem;
+      }
     }
   </style>
-
 </head>
-
-<script defer  src="face-api.min.js"></script>
-<script defer  src="script.js"></script>
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.js"></script>
-<link rel="stylesheet" href="jquery-ui.min.css" />
-<script src="jquery-ui.min.js"></script>
-
 <body>
-  <!--   -->
-  <p id="te">AI人工智慧辨識人臉</p>
-  <div id="mask"></div>
-  <img  id="loadImg"src="loadModel.gif">
-  <video id="inputVideo"  autoplay muted></video>
-  <input id="inputtextUser" type="text" name="API_name" placeholder="thorlgod">
-  <input id="inputtext" type="text" name="API_key" placeholder="api_key">
-  
+  <div class="app">
+    <main class="hud">
+      <section class="panel left-panel">
+        <div class="eyebrow">Neural Vision Matrix</div>
+        <div class="title-wrap">
+          <h1 class="title" data-text="AI 人臉辨識系統">AI 人臉辨識系統</h1>
+          <p class="subtitle">
+            即時啟動鏡頭，執行人臉偵測、年齡 / 性別 / 表情辨識。以 Cyberpunk 2077 風格打造的視覺介面，保持純靜態 HTML 與 face-api.js 模型流程。
+          </p>
+        </div>
+
+        <div class="video-shell" id="videoShell">
+          <div class="video-stage" id="videoStage">
+            <video id="inputVideo" autoplay muted playsinline></video>
+            <canvas id="overlay"></canvas>
+            <div class="video-grid"></div>
+            <div class="video-overlay"></div>
+            <div class="target-corners">
+              <span class="corner tl"></span>
+              <span class="corner tr"></span>
+              <span class="corner bl"></span>
+              <span class="corner br"></span>
+            </div>
+            <div class="loading-screen" id="loadingScreen">
+              <div class="loader-ring"></div>
+              <div class="loading-text" id="loadingText">模型載入中...</div>
+              <div class="loading-subtext" id="loadingSubtext">正在初始化臉部、年齡性別與表情辨識模組</div>
+              <div class="progress-wrap">
+                <div class="progress-bar" id="progressBar"></div>
+              </div>
+              <div class="progress-value" id="progressValue">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-bar">
+          <div class="field">
+            <label for="inputtextUser">Adafruit IO 使用者</label>
+            <input id="inputtextUser" type="text" name="API_name" placeholder="thorlgod" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="inputtext">Adafruit IO API Key</label>
+            <input id="inputtext" type="text" name="API_key" placeholder="api_key" autocomplete="off">
+          </div>
+          <button class="action-btn" id="cameraBtn" type="button">啟動鏡頭</button>
+        </div>
+
+        <div class="status-row">
+          <div class="status-chip" id="cameraStatus">鏡頭待命</div>
+          <div class="status-chip warning" id="modelStatus">模型未載入</div>
+          <div class="status-chip" id="faceStatus">尚未偵測到人臉</div>
+        </div>
+      </section>
+
+      <aside class="panel right-panel">
+        <div class="system-box">
+          <h2 class="system-title">SYSTEM LOG</h2>
+          <p class="system-log" id="systemLog">系統待機中。請先載入模型並啟動鏡頭。</p>
+        </div>
+
+        <div class="results-grid">
+          <article class="info-card highlight">
+            <div class="card-label">年齡掃描</div>
+            <div class="card-value" id="ageValue">--</div>
+            <div class="card-hint" id="ageHint">等待辨識資料</div>
+          </article>
+          <article class="info-card">
+            <div class="card-label">性別分析</div>
+            <div class="card-value" id="genderValue">--</div>
+            <div class="card-hint" id="genderHint">等待辨識資料</div>
+          </article>
+          <article class="info-card">
+            <div class="card-label">表情判讀</div>
+            <div class="card-value" id="expressionValue">--</div>
+            <div class="card-hint" id="expressionHint">等待辨識資料</div>
+          </article>
+          <article class="info-card highlight">
+            <div class="card-label">偵測狀態</div>
+            <div class="card-value" id="detectValue">STANDBY</div>
+            <div class="card-hint" id="detectHint">尚未開始分析</div>
+          </article>
+        </div>
+
+        <div class="side-stats">
+          <div class="mini-card">
+            <div class="mini-label">辨識模式</div>
+            <div class="mini-value">Tiny Face Detector + Age/Gender + Expressions</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-label">模型路徑</div>
+            <div class="mini-value">./models</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-label">資料上傳</div>
+            <div class="mini-value">每 2 秒回傳一次年齡至 Adafruit IO</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-label">UI 狀態</div>
+            <div class="mini-value">RWD / 掃描線 / 霓虹 HUD 已啟動</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      <span>© 2077 龍蝦王. SYSTEM ONLINE. 🦞</span>
+      <span>CYBER FACE SCAN / STATIC HTML / FACE-API.JS</span>
+    </footer>
+  </div>
+
+  <script defer src="face-api.min.js"></script>
+  <script>
+    const video = document.getElementById('inputVideo');
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+    const inputKey = document.getElementById('inputtext');
+    const inputUser = document.getElementById('inputtextUser');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const progressBar = document.getElementById('progressBar');
+    const progressValue = document.getElementById('progressValue');
+    const loadingText = document.getElementById('loadingText');
+    const loadingSubtext = document.getElementById('loadingSubtext');
+    const systemLog = document.getElementById('systemLog');
+    const videoShell = document.getElementById('videoShell');
+    const cameraStatus = document.getElementById('cameraStatus');
+    const modelStatus = document.getElementById('modelStatus');
+    const faceStatus = document.getElementById('faceStatus');
+    const ageValue = document.getElementById('ageValue');
+    const ageHint = document.getElementById('ageHint');
+    const genderValue = document.getElementById('genderValue');
+    const genderHint = document.getElementById('genderHint');
+    const expressionValue = document.getElementById('expressionValue');
+    const expressionHint = document.getElementById('expressionHint');
+    const detectValue = document.getElementById('detectValue');
+    const detectHint = document.getElementById('detectHint');
+
+    let modelsLoaded = false;
+    let streamStarted = false;
+    let detectionLoop = null;
+    let lastUploadAt = 0;
+
+    const expressionMap = {
+      neutral: '中性',
+      happy: '愉悅',
+      sad: '悲傷',
+      angry: '憤怒',
+      fearful: '恐懼',
+      disgusted: '厭惡',
+      surprised: '驚訝'
+    };
+
+    function setCookie(name, value, days) {
+      const d = new Date();
+      d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000) + (8 * 60 * 60 * 1000));
+      document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/`;
+    }
+
+    function getCookie(name) {
+      const key = `${name}=`;
+      return document.cookie.split(';').map(v => v.trim()).find(v => v.startsWith(key))?.slice(key.length) ? decodeURIComponent(document.cookie.split(';').map(v => v.trim()).find(v => v.startsWith(key)).slice(key.length)) : '';
+    }
+
+    function syncCookieFields() {
+      inputKey.value = inputKey.value || getCookie('key');
+      inputUser.value = inputUser.value || getCookie('name');
+    }
+
+    function persistInputs() {
+      setCookie('key', inputKey.value.trim(), 30);
+      setCookie('name', inputUser.value.trim(), 30);
+    }
+
+    inputKey.addEventListener('input', persistInputs);
+    inputUser.addEventListener('input', persistInputs);
+
+    function updateProgress(percent, title, subtext) {
+      const value = Math.max(0, Math.min(100, percent));
+      progressBar.style.width = `${value}%`;
+      progressValue.textContent = `${Math.round(value)}%`;
+      if (title) loadingText.textContent = title;
+      if (subtext) loadingSubtext.textContent = subtext;
+    }
+
+    function setSystemLog(text) {
+      systemLog.textContent = text;
+    }
+
+    function resizeCanvas() {
+      const rect = video.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function formatGender(gender) {
+      if (!gender) return '--';
+      return gender === 'male' ? '男性' : gender === 'female' ? '女性' : gender;
+    }
+
+    function getTopExpression(expressions = {}) {
+      const entries = Object.entries(expressions);
+      if (!entries.length) return null;
+      const [key, score] = entries.sort((a, b) => b[1] - a[1])[0];
+      return { key, label: expressionMap[key] || key, score };
+    }
+
+    async function loadModels() {
+      try {
+        updateProgress(6, '模型載入中...', '正在建立神經辨識核心');
+        setSystemLog('開始載入 AI 模型，請稍候。');
+
+        const loaders = [
+          {
+            label: '載入人臉偵測模型',
+            subtext: 'Tiny Face Detector 初始化中',
+            progress: 28,
+            task: () => faceapi.nets.tinyFaceDetector.loadFromUri('./models')
+          },
+          {
+            label: '載入年齡 / 性別模型',
+            subtext: 'Age / Gender Net 線上同步中',
+            progress: 58,
+            task: () => faceapi.nets.ageGenderNet.loadFromUri('./models')
+          },
+          {
+            label: '載入表情辨識模型',
+            subtext: 'Face Expression Net 線上同步中',
+            progress: 84,
+            task: () => faceapi.nets.faceExpressionNet.loadFromUri('./models')
+          }
+        ];
+
+        for (const item of loaders) {
+          updateProgress(item.progress - 16, item.label, item.subtext);
+          await item.task();
+          updateProgress(item.progress, item.label, item.subtext);
+        }
+
+        updateProgress(100, '模型載入完成', '系統已準備好啟動鏡頭');
+        loadingScreen.classList.add('hidden');
+        modelsLoaded = true;
+        modelStatus.textContent = '模型載入完成';
+        modelStatus.classList.remove('warning', 'danger');
+        setSystemLog('模型已完成載入。點擊「啟動鏡頭」開始分析。');
+        cameraBtn.disabled = false;
+      } catch (error) {
+        console.error(error);
+        updateProgress(100, '模型載入失敗', '請確認 models/ 路徑與檔案是否完整');
+        modelStatus.textContent = '模型載入失敗';
+        modelStatus.classList.add('danger');
+        setSystemLog('模型載入失敗：請檢查 ./models 路徑與網頁執行環境。');
+      }
+    }
+
+    async function startCamera() {
+      if (!modelsLoaded) {
+        setSystemLog('模型尚未完成載入，請稍候。');
+        return;
+      }
+
+      if (streamStarted) {
+        setSystemLog('鏡頭已啟動，正在持續分析中。');
+        return;
+      }
+
+      try {
+        cameraBtn.disabled = true;
+        setSystemLog('正在請求鏡頭權限...');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        streamStarted = true;
+        resizeCanvas();
+        cameraStatus.textContent = '鏡頭已啟動';
+        faceStatus.textContent = '即時掃描中';
+        detectValue.textContent = 'ONLINE';
+        detectHint.textContent = '神經辨識持續運作中';
+        setSystemLog('鏡頭已啟動，開始即時掃描人臉資料。');
+        runDetectionLoop();
+      } catch (error) {
+        console.error(error);
+        cameraBtn.disabled = false;
+        cameraStatus.textContent = '鏡頭啟動失敗';
+        cameraStatus.classList.add('danger');
+        setSystemLog('無法開啟鏡頭。請確認瀏覽器權限與 HTTPS / 本機環境。');
+      }
+    }
+
+    async function sendAgeToAdafruit(age) {
+      const key = inputKey.value.trim();
+      const user = inputUser.value.trim();
+      if (!key || !user) return;
+
+      const now = Date.now();
+      if (now - lastUploadAt < 2000) return;
+      lastUploadAt = now;
+
+      try {
+        await fetch(`https://io.adafruit.com/api/v2/${user}/feeds/age/data?X-AIO-Key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: new URLSearchParams({ value: String(parseInt(age, 10)) })
+        });
+      } catch (error) {
+        console.warn('Adafruit IO upload failed:', error);
+      }
+    }
+
+    function drawDetections(detections, displaySize) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!detections.length) return;
+
+      const resized = faceapi.resizeResults(detections, displaySize);
+      const mirrored = resized.map(det => {
+        const box = det.detection.box;
+        const mirroredBox = new faceapi.Box(
+          displaySize.width - box.x - box.width,
+          box.y,
+          box.width,
+          box.height
+        );
+        return {
+          ...det,
+          detection: { ...det.detection, box: mirroredBox }
+        };
+      });
+
+      faceapi.draw.drawDetections(canvas, mirrored);
+
+      mirrored.forEach(det => {
+        const topExpression = getTopExpression(det.expressions);
+        const lines = [
+          `年齡 ${parseInt(det.age, 10)}`,
+          `${formatGender(det.gender)} ${parseInt(det.genderProbability * 100, 10)}%`
+        ];
+        if (topExpression) lines.push(`${topExpression.label} ${parseInt(topExpression.score * 100, 10)}%`);
+        new faceapi.draw.DrawTextField(lines, det.detection.box.topLeft).draw(canvas);
+      });
+    }
+
+    function updateCards(face) {
+      const age = parseInt(face.age, 10);
+      const genderText = formatGender(face.gender);
+      const topExpression = getTopExpression(face.expressions);
+
+      ageValue.textContent = `${age} 歲`;
+      ageHint.textContent = 'AI 估算結果，僅供即時互動參考';
+      genderValue.textContent = genderText;
+      genderHint.textContent = `信心值 ${parseInt(face.genderProbability * 100, 10)}%`;
+      expressionValue.textContent = topExpression ? topExpression.label : '--';
+      expressionHint.textContent = topExpression ? `判讀機率 ${parseInt(topExpression.score * 100, 10)}%` : '未取得表情資料';
+      detectValue.textContent = 'TARGET LOCK';
+      detectHint.textContent = '已鎖定人臉並輸出即時分析';
+      faceStatus.textContent = '已偵測到人臉';
+      videoShell.classList.add('detecting');
+    }
+
+    function resetCards() {
+      ageValue.textContent = '--';
+      ageHint.textContent = '等待辨識資料';
+      genderValue.textContent = '--';
+      genderHint.textContent = '等待辨識資料';
+      expressionValue.textContent = '--';
+      expressionHint.textContent = '等待辨識資料';
+      detectValue.textContent = 'SEARCHING';
+      detectHint.textContent = '掃描畫面中，等待目標進入';
+      faceStatus.textContent = '尚未偵測到人臉';
+      videoShell.classList.remove('detecting');
+    }
+
+    function runDetectionLoop() {
+      if (detectionLoop) clearInterval(detectionLoop);
+
+      detectionLoop = setInterval(async () => {
+        if (video.readyState < 2) return;
+
+        const displaySize = { width: video.clientWidth, height: video.clientHeight };
+        resizeCanvas();
+
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withAgeAndGender()
+          .withFaceExpressions();
+
+        drawDetections(detections, displaySize);
+
+        if (detections.length > 0) {
+          updateCards(detections[0]);
+          setSystemLog('已鎖定人臉目標，持續更新年齡、性別與表情分析。');
+          sendAgeToAdafruit(detections[0].age);
+        } else {
+          resetCards();
+          setSystemLog('系統運作正常，等待人臉進入掃描區域。');
+        }
+      }, 140);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    cameraBtn.addEventListener('click', startCamera);
+
+    syncCookieFields();
+    cameraBtn.disabled = true;
+    loadModels();
+  </script>
 </body>
-
-
-
 </html>
