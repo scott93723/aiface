@@ -958,9 +958,10 @@
       lastUploadAt = now;
 
       try {
-        await fetch(`https://io.adafruit.com/api/v2/${user}/feeds/age/data?X-AIO-Key=${key}`, {
+        // API Key 改放 HTTP header，避免出現在網址被瀏覽器歷史/代理/伺服器日誌記錄
+        await fetch(`https://io.adafruit.com/api/v2/${encodeURIComponent(user)}/feeds/age/data`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          headers: { 'X-AIO-Key': key, 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
           body: new URLSearchParams({ value: String(parseInt(age, 10)) })
         });
       } catch (error) {
@@ -1031,30 +1032,34 @@
     }
 
     function runDetectionLoop() {
-      if (detectionLoop) clearInterval(detectionLoop);
+      if (detectionLoop) clearTimeout(detectionLoop);
 
-      detectionLoop = setInterval(async () => {
-        if (video.readyState < 2) return;
+      // 改用遞迴 setTimeout：等前一次推論 await 完成後才排下一次，
+      // 避免 setInterval 在推論超過 140ms 時重疊堆積造成 CPU/記憶體飆升
+      async function tick() {
+        if (video.readyState >= 2) {
+          const displaySize = { width: video.clientWidth, height: video.clientHeight };
 
-        const displaySize = { width: video.clientWidth, height: video.clientHeight };
-        resizeCanvas();
+          const detections = await faceapi
+            .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+            .withAgeAndGender()
+            .withFaceExpressions();
 
-        const detections = await faceapi
-          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-          .withAgeAndGender()
-          .withFaceExpressions();
+          drawDetections(detections, displaySize);
 
-        drawDetections(detections, displaySize);
-
-        if (detections.length > 0) {
-          updateCards(detections[0]);
-          setSystemLog('已鎖定人臉目標，持續更新年齡、性別與表情分析。');
-          sendAgeToAdafruit(detections[0].age);
-        } else {
-          resetCards();
-          setSystemLog('系統運作正常，等待人臉進入掃描區域。');
+          if (detections.length > 0) {
+            updateCards(detections[0]);
+            setSystemLog('已鎖定人臉目標，持續更新年齡、性別與表情分析。');
+            sendAgeToAdafruit(detections[0].age);
+          } else {
+            resetCards();
+            setSystemLog('系統運作正常，等待人臉進入掃描區域。');
+          }
         }
-      }, 140);
+        detectionLoop = setTimeout(tick, 140);
+      }
+
+      detectionLoop = setTimeout(tick, 140);
     }
 
     window.addEventListener('resize', resizeCanvas);
